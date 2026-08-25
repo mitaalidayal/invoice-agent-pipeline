@@ -41,6 +41,17 @@ def main() -> None:
         print("Extraction failed - could not process this invoice.")
     else:
         print(f"Vendor: {final_state['extracted'].get('vendor')}")
+
+        # Temporary per-node visibility while Approval/Payment are still stubs - remove once
+        # the final decision/reasoning covers this on its own.
+        validation = final_state["validation"]
+        if validation["validation_passed"]:
+            print("Validation: passed")
+        else:
+            failures = [item for item in validation["items"] if item["verdict"] != "ok"]
+            reasons = "; ".join(f"{item['name']}: {item['verdict']} (qty {item['qty']})" for item in failures)
+            print(f"Validation: FAILED - {reasons}")
+
         print(f"Decision: {final_state['approval_decision']}")
         print(f"Reasoning: {final_state['approval_reasoning']}")
     print(f"Full run log: {log_path}")

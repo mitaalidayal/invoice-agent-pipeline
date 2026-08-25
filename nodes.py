@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 
 from ingestion import extract_via_grok, get_raw_text, parse_csv, parse_json, parse_xml
 from state import InvoiceState
+from validation import validate_items
 
 
 def _timestamp() -> str:
@@ -65,8 +66,7 @@ def ingestion_node(state: InvoiceState) -> dict:
 
 
 def validation_node(state: InvoiceState) -> dict:
-    """Stub. Real version aggregates quantities per item and calls check_inventory()."""
-    validation = {"items": [], "validation_passed": True}
+    validation = validate_items(state["extracted"]["items"])
     return {
         "validation": validation,
         "log": _append_log(state, "validation", validation),
