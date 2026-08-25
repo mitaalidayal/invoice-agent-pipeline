@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 
 from approval import run_approval
 from ingestion import extract_via_grok, get_raw_text, parse_csv, parse_json, parse_xml
+from payment import mock_payment
 from state import InvoiceState
 from validation import validate_items
 
@@ -85,8 +86,8 @@ def approval_node(state: InvoiceState) -> dict:
 
 
 def payment_node(state: InvoiceState) -> dict:
-    """Stub. Real version calls mock_payment(vendor, amount)."""
-    result = {"status": "stub"}
+    extracted = state["extracted"]
+    result = mock_payment(extracted["vendor"], extracted["amount"])
     return {
         "payment_result": result,
         "log": _append_log(state, "payment", result),
