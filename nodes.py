@@ -1,5 +1,9 @@
+import csv
 import datetime
+import json
+import xml.etree.ElementTree as ET
 
+from ingestion import extract_via_grok, get_raw_text, parse_csv, parse_json, parse_xml
 from state import InvoiceState
 
 
@@ -11,11 +15,50 @@ def _append_log(state: InvoiceState, node: str, output: dict) -> list[dict]:
     return state["log"] + [{"node": node, "timestamp": _timestamp(), "output": output}]
 
 
-def ingestion_node(state: InvoiceState) -> dict:
-    """Stub. Real version routes by extension and extracts via Grok / native parsing."""
-    extracted = {"vendor": None, "amount": None, "items": [], "due_date": None, "currency": None}
+def _parse_structured(invoice_path: str) -> dict:
+    """Native parse for .json/.csv/.xml. Raises on structural failure - that
+    exception is the signal ingestion_node uses to fall back to Grok.
+    """
+    if invoice_path.endswith(".json"):
+        with open(invoice_path) as f:
+            return parse_json(json.load(f))
+    if invoice_path.endswith(".csv"):
+        with open(invoice_path) as f:
+            return parse_csv(list(csv.reader(f)))
+    return parse_xml(ET.parse(invoice_path).getroot())  # .xml
+
+
+def _extraction_failed(state: InvoiceState, raw_text: str, error: Exception) -> dict:
     return {
-        "raw_text": "",
+        "raw_text": raw_text,
+        "extraction_failed": True,
+        "extracted": {},
+        "log": _append_log(state, "ingestion", {"error": str(error)}),
+    }
+
+
+def ingestion_node(state: InvoiceState) -> dict:
+    invoice_path = state["invoice_path"]
+    is_structured = invoice_path.endswith((".json", ".csv", ".xml"))
+
+    try:
+        raw_text = get_raw_text(invoice_path)
+    except Exception as error:
+        return _extraction_failed(state, "", error)
+
+    try:
+        extracted = _parse_structured(invoice_path) if is_structured else extract_via_grok(raw_text)
+    except Exception as error:
+        if not is_structured:
+            return _extraction_failed(state, raw_text, error)
+        try:
+            extracted = extract_via_grok(raw_text)  # native parse failed - fall back to Grok
+        except Exception as fallback_error:
+            return _extraction_failed(state, raw_text, fallback_error)
+
+    return {
+        "raw_text": raw_text,
+        "extraction_failed": False,
         "extracted": extracted,
         "log": _append_log(state, "ingestion", extracted),
     }
@@ -60,3 +103,7 @@ def reject_node(state: InvoiceState) -> dict:
 
 def route_after_approval(state: InvoiceState) -> str:
     return "approved" if state["approval_decision"] == "approved" else "rejected"
+
+
+def route_after_ingestion(state: InvoiceState) -> str:
+    return "failed" if state["extraction_failed"] else "ok"

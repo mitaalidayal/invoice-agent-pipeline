@@ -6,6 +6,7 @@ from nodes import (
     payment_node,
     reject_node,
     route_after_approval,
+    route_after_ingestion,
     validation_node,
 )
 from state import InvoiceState
@@ -20,7 +21,11 @@ def build_graph():
     builder.add_node("reject", reject_node)
 
     builder.set_entry_point("ingestion")
-    builder.add_edge("ingestion", "validation")
+    builder.add_conditional_edges(
+        "ingestion",
+        route_after_ingestion,
+        {"ok": "validation", "failed": END},
+    )
     builder.add_edge("validation", "approval")
     builder.add_conditional_edges(
         "approval",

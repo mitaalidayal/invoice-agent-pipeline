@@ -12,6 +12,7 @@ def _initial_state(invoice_path: str) -> InvoiceState:
         invoice_path=invoice_path,
         raw_text="",
         extracted={},
+        extraction_failed=False,
         validation={},
         approval_decision="pending",
         approval_reasoning="",
@@ -36,9 +37,12 @@ def main() -> None:
     log_path = logs_dir / f"{timestamp}_{invoice_stem}.json"
     log_path.write_text(json.dumps(final_state, indent=2, default=str))
 
-    print(f"Vendor: {final_state['extracted'].get('vendor')}")
-    print(f"Decision: {final_state['approval_decision']}")
-    print(f"Reasoning: {final_state['approval_reasoning']}")
+    if final_state["extraction_failed"]:
+        print("Extraction failed - could not process this invoice.")
+    else:
+        print(f"Vendor: {final_state['extracted'].get('vendor')}")
+        print(f"Decision: {final_state['approval_decision']}")
+        print(f"Reasoning: {final_state['approval_reasoning']}")
     print(f"Full run log: {log_path}")
 
 
