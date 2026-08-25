@@ -3,6 +3,7 @@ import datetime
 import json
 import xml.etree.ElementTree as ET
 
+from approval import run_approval
 from ingestion import extract_via_grok, get_raw_text, parse_csv, parse_json, parse_xml
 from state import InvoiceState
 from validation import validate_items
@@ -74,13 +75,12 @@ def validation_node(state: InvoiceState) -> dict:
 
 
 def approval_node(state: InvoiceState) -> dict:
-    """Stub. Real version applies rules + LLM decision + one bounded reflection pass."""
-    decision = "approved"
-    reasoning = "stub: plumbing test, no real reasoning yet"
+    result = run_approval(state["extracted"], state["validation"])
     return {
-        "approval_decision": decision,
-        "approval_reasoning": reasoning,
-        "log": _append_log(state, "approval", {"decision": decision, "reasoning": reasoning}),
+        "approval_decision": result["decision"],
+        "approval_reasoning": result["reasoning"],
+        "reflection_count": result["reflection_count"],
+        "log": _append_log(state, "approval", result),
     }
 
 
