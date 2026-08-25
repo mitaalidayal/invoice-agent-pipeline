@@ -198,12 +198,13 @@ Invoice text:
 """
 
     last_error = None
-    for attempt in range(2):  # one retry, per the brief
+    for attempt in range(2):  # one retry on failure or malformed output
         try:
             completion = client.beta.chat.completions.parse(
                 model="grok-4.6",
                 messages=[{"role": "user", "content": prompt}],
                 response_format=ExtractedInvoice,
+                temperature=0,
             )
             return completion.choices[0].message.parsed.model_dump()
         except Exception as e:

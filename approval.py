@@ -30,23 +30,29 @@ def apply_rules(extracted: dict, validation: dict) -> list[str]:
     if not validation["validation_passed"]:
         flags.append("validation_failed")
 
-    if extracted.get("currency") != "USD":
+    currency = extracted.get("currency")
+    if currency is not None and currency != "USD":
         flags.append("non_usd")
 
     return flags
 
 
-def draft_decision(extracted: dict, validation: dict, flags: list[str]) -> dict:
-    """First-pass approve/reject decision. Flags are given as signals with an
-    explanation of what each means, not as hard rules the LLM must obey -
-    the rules layer decides what's worth flagging, the LLM decides what it
-    means for this specific invoice.
+def _facts_block(extracted: dict, validation: dict, flags: list[str]) -> str:
+    """Shared invoice/validation/flags summary for both prompts below. The
+    currency display matters here: rendering a bare Python None reads to the
+    model as "something is broken," even with no non_usd flag backing it up -
+    so a missing currency (which is just a gap in how CSV is parsed, not a
+    real defect in the invoice) gets an explicit, non-alarming explanation
+    instead of the literal word "None".
     """
-    prompt = f"""You are simulating a VP-level review of an invoice for approval or rejection.
+    currency = extracted.get("currency")
+    currency_display = (
+        currency if currency else "not recorded (this invoice format doesn't capture currency - treat as USD, not as a defect)"
+    )
 
-Invoice details:
+    return f"""Invoice details:
 - Vendor: {extracted.get("vendor")!r}
-- Amount: {extracted.get("amount")} {extracted.get("currency")}
+- Amount: {extracted.get("amount")} {currency_display}
 - Due date: {extracted.get("due_date")}
 - Items: {extracted.get("items")}
 
@@ -60,9 +66,20 @@ Rule-based flags for this invoice: {flags or "none"}
   (unknown item, stock mismatch, or a data integrity issue like negative
   quantity) - this should generally lean toward rejection unless you have a
   clear reason to approve anyway.
-- "non_usd" means the currency isn't confirmed as USD, so the $10,000
-  threshold may not directly apply - note this as needing manual/FX review
-  rather than guessing a conversion.
+- "non_usd" means the currency is confirmed as something other than USD, so
+  the $10,000 threshold may not directly apply - note this as needing
+  manual/FX review rather than guessing a conversion."""
+
+
+def draft_decision(extracted: dict, validation: dict, flags: list[str]) -> dict:
+    """First-pass approve/reject decision. Flags are given as signals with an
+    explanation of what each means, not as hard rules the LLM must obey -
+    the rules layer decides what's worth flagging, the LLM decides what it
+    means for this specific invoice.
+    """
+    prompt = f"""You are simulating a VP-level review of an invoice for approval or rejection.
+
+{_facts_block(extracted, validation, flags)}
 
 Decide "approved" or "rejected", and give reasoning grounded in the specific
 facts above (not generic boilerplate).
@@ -72,6 +89,7 @@ facts above (not generic boilerplate).
         model="grok-4.6",
         messages=[{"role": "user", "content": prompt}],
         response_format=ApprovalDecision,
+        temperature=0,
     )
     return completion.choices[0].message.parsed.model_dump()
 
@@ -117,17 +135,7 @@ def reflect_on_decision(extracted: dict, validation: dict, flags: list[str], dra
     prompt = f"""You are critiquing a prior VP-level approval decision on this invoice,
 checking it for errors or unjustified reasoning before it becomes final.
 
-Invoice details:
-- Vendor: {extracted.get("vendor")!r}
-- Amount: {extracted.get("amount")} {extracted.get("currency")}
-- Due date: {extracted.get("due_date")}
-- Items: {extracted.get("items")}
-
-Validation results:
-- Overall passed: {validation["validation_passed"]}
-- Per-item verdicts: {validation["items"]}
-
-Rule-based flags: {flags or "none"}
+{_facts_block(extracted, validation, flags)}
 
 Prior decision: {draft["decision"]}
 Prior reasoning: {draft["reasoning"]}
@@ -142,5 +150,6 @@ decision and explain specifically what changed and why.
         model="grok-4.6",
         messages=[{"role": "user", "content": prompt}],
         response_format=ApprovalDecision,
+        temperature=0,
     )
     return completion.choices[0].message.parsed.model_dump()
