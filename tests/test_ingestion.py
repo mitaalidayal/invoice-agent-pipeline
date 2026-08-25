@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ingestion import extract_via_grok, get_raw_text, normalize_item_name, parse_csv, parse_json, parse_xml
+from agents.ingestion import extract_via_grok, get_raw_text, normalize_item_name, parse_csv, parse_json, parse_xml
 
 
 def _load_json(name):
@@ -97,7 +97,7 @@ def test_extract_via_grok_retries_once_on_failure(monkeypatch):
     )
     client = MagicMock()
     client.beta.chat.completions.parse.side_effect = [Exception("simulated failure"), success]
-    monkeypatch.setattr("ingestion.OpenAI", lambda **kwargs: client)
+    monkeypatch.setattr("agents.ingestion.OpenAI", lambda **kwargs: client)
 
     result = extract_via_grok("some invoice text")
 
@@ -108,7 +108,7 @@ def test_extract_via_grok_retries_once_on_failure(monkeypatch):
 def test_extract_via_grok_raises_after_exhausting_retries(monkeypatch):
     client = MagicMock()
     client.beta.chat.completions.parse.side_effect = [Exception("failure 1"), Exception("failure 2")]
-    monkeypatch.setattr("ingestion.OpenAI", lambda **kwargs: client)
+    monkeypatch.setattr("agents.ingestion.OpenAI", lambda **kwargs: client)
 
     with pytest.raises(Exception, match="failure 2"):
         extract_via_grok("some invoice text")

@@ -1,5 +1,5 @@
-import approval
-from approval import apply_rules
+from agents import approval
+from agents.approval import apply_rules
 
 
 def test_no_flags_for_clean_invoice():

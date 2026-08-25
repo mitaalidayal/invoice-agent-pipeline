@@ -1,4 +1,4 @@
-from validation import aggregate_items, check_inventory, validate_items
+from agents.validation import aggregate_items, check_inventory, validate_items
 
 
 def test_aggregate_items_sums_repeated_names():

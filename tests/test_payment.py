@@ -1,4 +1,4 @@
-from payment import mock_payment
+from agents.payment import mock_payment
 
 
 def test_mock_payment_returns_success():

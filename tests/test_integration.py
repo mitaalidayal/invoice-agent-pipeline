@@ -6,9 +6,9 @@ not just that our code around it is wired correctly. Run everything with
 
 import pytest
 
-from approval import reflect_on_decision
-from ingestion import get_raw_text, extract_via_grok
-from validation import validate_items
+from agents.approval import reflect_on_decision
+from agents.ingestion import get_raw_text, extract_via_grok
+from agents.validation import validate_items
 
 pytestmark = pytest.mark.integration
 

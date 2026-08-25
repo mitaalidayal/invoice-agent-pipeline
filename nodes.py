@@ -3,11 +3,11 @@ import datetime
 import json
 import xml.etree.ElementTree as ET
 
-from approval import run_approval
-from ingestion import extract_via_grok, get_raw_text, parse_csv, parse_json, parse_xml
-from payment import mock_payment
+from agents.approval import run_approval
+from agents.ingestion import extract_via_grok, get_raw_text, parse_csv, parse_json, parse_xml
+from agents.payment import mock_payment
+from agents.validation import validate_items
 from state import InvoiceState
-from validation import validate_items
 
 
 def _timestamp() -> str:
