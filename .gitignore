@@ -4,3 +4,4 @@ __pycache__/
 inventory.db
 logs/
 .env
+.pytest_cache/
