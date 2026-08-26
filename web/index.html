@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Invoice Processing Agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app" class="entry">
+      <div class="intro" id="intro">
+        <div class="intro-title">Invoice Processing Agent</div>
+        <div class="intro-sub">
+          Select a sample invoice below to run it through Ingestion &rarr; Validation &rarr; Approval &rarr; Payment.
+        </div>
+      </div>
+
+      <header class="header" id="header">
+        <div>
+          <div class="header-title">Invoice Processing Agent</div>
+          <div class="header-sub">
+            <span class="step">Ingestion</span><span class="arrow">&rarr;</span>
+            <span class="step">Validation</span><span class="arrow">&rarr;</span>
+            <span class="step">Approval</span><span class="arrow">&rarr;</span>
+            <span class="step">Payment</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="layout" id="layout">
+        <aside class="panel panel-left" id="panel-left">
+          <div class="dropzone" id="dropzone">
+            <div class="dropzone-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M12 3v12m0-12l-4 4m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
+              </svg>
+            </div>
+            <div class="dropzone-title">Upload an invoice</div>
+            <div class="dropzone-sub">Drag &amp; drop, or click to browse &middot; PDF, TXT, JSON, CSV, XML</div>
+            <input type="file" id="file-input" accept=".txt,.json,.csv,.xml,.pdf" hidden />
+          </div>
+
+          <div class="divider" id="divider">
+            <div class="line"></div>
+            <span>or choose a sample</span>
+            <div class="line"></div>
+          </div>
+
+          <div class="panel-header">
+            <span class="panel-title">Sample Invoices</span>
+            <span class="panel-count" id="row-count">16</span>
+          </div>
+
+          <div class="search-row">
+            <div class="search-wrap">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" />
+              </svg>
+              <input class="search-input" id="search-input" placeholder="Filter by filename&hellip;" />
+            </div>
+          </div>
+
+          <div class="filter-chips" id="filter-chips">
+            <div class="chip active" data-fmt="all">all</div>
+            <div class="chip" data-fmt="txt">.txt</div>
+            <div class="chip" data-fmt="json">.json</div>
+            <div class="chip" data-fmt="csv">.csv</div>
+            <div class="chip" data-fmt="xml">.xml</div>
+            <div class="chip" data-fmt="pdf">.pdf</div>
+          </div>
+
+          <ul id="invoice-list" class="invoice-list"></ul>
+
+          <div class="submit-row">
+            <button class="submit-btn" id="submit-btn" disabled>Select an invoice to process</button>
+          </div>
+        </aside>
+
+        <section class="panel panel-right" id="panel-right"></section>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
