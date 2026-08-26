@@ -6,7 +6,7 @@ not just that our code around it is wired correctly. Run everything with
 
 import pytest
 
-from agents.approval import reflect_on_decision
+from agents.approval import reflect_on_decision, run_approval
 from agents.ingestion import get_raw_text, extract_via_grok
 from agents.validation import validate_items
 
@@ -48,11 +48,27 @@ def test_reflection_catches_and_corrects_a_bad_draft():
     # self-correction loop has real teeth rather than rubber-stamping.
     extracted = {
         "vendor": "Gadgets Co.", "amount": 15000.0, "currency": "USD",
-        "items": [{"name": "GadgetX", "qty": 20}], "due_date": "2026-01-30",
+        "items": [{"name": "GadgetX", "qty": 20, "unit_price": 750.0}], "due_date": "2026-01-30",
     }
-    validation = validate_items(extracted["items"])
+    validation = validate_items(extracted["vendor"], extracted["items"])
     bad_draft = {"decision": "approved", "reasoning": "Looks fine, approving."}
 
     fixed = reflect_on_decision(extracted, validation, ["high_value", "validation_failed"], bad_draft)
 
     assert fixed["decision"] == "rejected"
+
+
+def test_legitimate_price_deviation_does_not_cause_rejection():
+    # Real bug this locks in: invoice_1010's genuine $2000 tax+shipping (not
+    # captured as separate fields) was misread by the LLM as an "unexplained
+    # gap" once unit_price was visible in the raw items list, flipping this
+    # otherwise-clean invoice from approved to rejected. Fixed by keeping
+    # unit_price out of the raw items display; this test replicates the
+    # exact real scenario end-to-end to make sure it stays fixed.
+    text = get_raw_text("data/invoices/invoice_1010.txt")
+    extracted = extract_via_grok(text)
+    validation = validate_items(extracted["vendor"], extracted["items"])
+
+    result = run_approval(extracted, validation)
+
+    assert result["decision"] == "approved"

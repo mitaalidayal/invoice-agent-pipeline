@@ -13,6 +13,7 @@ load_dotenv()
 class ExtractedItem(BaseModel):
     name: str
     qty: int
+    unit_price: float
 
 
 class ExtractedInvoice(BaseModel):
@@ -40,7 +41,11 @@ def parse_json(data: dict) -> dict:
     vendor_name = vendor.get("name") if isinstance(vendor, dict) else vendor
 
     items = [
-        {"name": normalize_item_name(item["item"]), "qty": item["quantity"]}
+        {
+            "name": normalize_item_name(item["item"]),
+            "qty": item["quantity"],
+            "unit_price": item["unit_price"],
+        }
         for item in data.get("line_items", [])
     ]
 
@@ -83,7 +88,7 @@ def _parse_csv_vertical(pairs: list[list[str]]) -> dict:
         elif field == "quantity":
             current_item["qty"] = int(value)
         elif field == "unit_price":
-            pass  # not part of the extracted.items schema
+            current_item["unit_price"] = float(value)
         else:
             top_level[field] = value
 
@@ -112,7 +117,11 @@ def _parse_csv_tabular(header: list[str], rows: list[list[str]]) -> dict:
     for row in rows:
         item_name = row[col["item"]].strip()
         if item_name:
-            items.append({"name": normalize_item_name(item_name), "qty": int(row[col["qty"]])})
+            items.append({
+                "name": normalize_item_name(item_name),
+                "qty": int(row[col["qty"]]),
+                "unit_price": float(row[col["unit price"]]),
+            })
             vendor = vendor or row[col["vendor"]].strip()
             due_date = due_date or row[col["due date"]].strip()
         elif row[col["unit price"]].strip().lower().startswith("total"):
@@ -138,6 +147,7 @@ def parse_xml(root: ET.Element) -> dict:
         {
             "name": normalize_item_name(item.findtext("name")),
             "qty": int(item.findtext("quantity")),
+            "unit_price": float(item.findtext("unit_price")),
         }
         for item in root.find("line_items").findall("item")
     ]

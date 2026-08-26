@@ -30,6 +30,9 @@ def apply_rules(extracted: dict, validation: dict) -> list[str]:
     if not validation["validation_passed"]:
         flags.append("validation_failed")
 
+    if not validation["vendor_approved"]:
+        flags.append("unapproved_vendor")
+
     currency = extracted.get("currency")
     if currency is not None and currency != "USD":
         flags.append("non_usd")
@@ -50,15 +53,28 @@ def _facts_block(extracted: dict, validation: dict, flags: list[str]) -> str:
         currency if currency else "not recorded (this invoice format doesn't capture currency - treat as USD, not as a defect)"
     )
 
+    # name+qty only, deliberately - the raw per-unit prices aren't shown here.
+    # Showing them let the model attempt its own subtotal-vs-total arithmetic
+    # (qty x price, summed) and flag the gap from tax/shipping - fields we
+    # don't extract separately - as an "unexplained" defect on an otherwise
+    # legitimate invoice. Price signals go through price_notes below instead,
+    # which is the deliberately-computed comparison we actually want reasoned
+    # about, not raw ingredients for an unintended calculation.
+    items_display = [{"name": item["name"], "qty": item["qty"]} for item in extracted.get("items", [])]
+
     return f"""Invoice details:
 - Vendor: {extracted.get("vendor")!r}
 - Amount: {extracted.get("amount")} {currency_display}
 - Due date: {extracted.get("due_date")}
-- Items: {extracted.get("items")}
+- Items: {items_display}
 
 Validation results (per-item stock/inventory check):
 - Overall passed: {validation["validation_passed"]}
 - Per-item verdicts: {validation["items"]}
+- Vendor on approved list: {validation["vendor_approved"]}
+- Price deviations from expected unit price (informational only - legitimate
+  reasons like volume discounts or rush surcharges are common, this is not
+  automatically an error): {validation["price_notes"] or "none"}
 
 Rule-based flags for this invoice: {flags or "none"}
 - "high_value" means the amount exceeds $10,000 and warrants extra scrutiny.
@@ -66,6 +82,9 @@ Rule-based flags for this invoice: {flags or "none"}
   (unknown item, stock mismatch, or a data integrity issue like negative
   quantity) - this should generally lean toward rejection unless you have a
   clear reason to approve anyway.
+- "unapproved_vendor" means this vendor is not on our approved vendor list -
+  this is a fraud-relevant identity check, treat it seriously, not as a
+  minor administrative gap.
 - "non_usd" means the currency is confirmed as something other than USD, so
   the $10,000 threshold may not directly apply - note this as needing
   manual/FX review rather than guessing a conversion."""

@@ -68,7 +68,8 @@ def ingestion_node(state: InvoiceState) -> dict:
 
 
 def validation_node(state: InvoiceState) -> dict:
-    validation = validate_items(state["extracted"]["items"])
+    extracted = state["extracted"]
+    validation = validate_items(extracted["vendor"], extracted["items"])
     return {
         "validation": validation,
         "log": _append_log(state, "validation", validation),
