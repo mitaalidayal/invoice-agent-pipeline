@@ -17,6 +17,7 @@ class ExtractedItem(BaseModel):
 
 
 class ExtractedInvoice(BaseModel):
+    is_invoice: bool
     vendor: str
     amount: float
     items: list[ExtractedItem]
@@ -189,10 +190,18 @@ def extract_via_grok(raw_text: str) -> dict:
     since this is the only ingestion path where OCR corruption and spacing
     variants actually show up in the real sample data.
     """
-    client = OpenAI(api_key=os.environ["XAI_API_KEY"], base_url="https://api.x.ai/v1")
     known_items = ", ".join(_known_item_names())
 
     prompt = f"""Extract structured invoice data from the text below.
+
+First, decide whether this document is actually an invoice at all - meaning
+it has a vendor billing for something, an amount owed, and line items. If it
+is clearly NOT an invoice (for example a resume, a letter, or some unrelated
+document that just happens to be in a supported file format), set
+is_invoice to false and fill the other fields with your best-effort guess or
+empty/zero defaults - they will be discarded either way. If it IS an invoice,
+even a messy, corrupted, or unusually formatted one, set is_invoice to true
+and extract normally.
 
 Known canonical item names in our inventory system: {known_items}.
 Item names in the invoice text may be OCR-corrupted, misspelled, or inconsistently
@@ -201,14 +210,29 @@ Map every item name to its closest canonical form from the list above if it clea
 matches one; otherwise leave the name exactly as written - it may be a genuinely
 unknown item, do not force a match.
 
-Invoice text:
+Document text:
 ---
 {raw_text}
 ---
 """
 
+    result = _call_grok(prompt)
+    if not result.is_invoice:
+        raise ValueError("This document does not appear to be an invoice")
+
+    return {key: value for key, value in result.model_dump().items() if key != "is_invoice"}
+
+
+def _call_grok(prompt: str) -> ExtractedInvoice:
+    """The actual Grok call, with one retry on a transient failure (network
+    error, malformed response). Not used for the is_invoice judgment itself -
+    a confident negative at temperature=0 wouldn't change on retry, so
+    retrying that would just waste an API call.
+    """
+    client = OpenAI(api_key=os.environ["XAI_API_KEY"], base_url="https://api.x.ai/v1")
+
     last_error = None
-    for attempt in range(2):  # one retry on failure or malformed output
+    for attempt in range(2):
         try:
             completion = client.beta.chat.completions.parse(
                 model="grok-4.6",
@@ -216,7 +240,7 @@ Invoice text:
                 response_format=ExtractedInvoice,
                 temperature=0,
             )
-            return completion.choices[0].message.parsed.model_dump()
+            return completion.choices[0].message.parsed
         except Exception as e:
             last_error = e
     raise last_error

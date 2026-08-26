@@ -76,6 +76,12 @@ Validation results (per-item stock/inventory check):
   reasons like volume discounts or rush surcharges are common, this is not
   automatically an error): {validation["price_notes"] or "none"}
 
+Note: the invoice Amount may legitimately be higher than a simple sum of
+item quantities times unit prices - tax, shipping, and other fees are real
+and common on these invoices but are not extracted as separate fields here.
+Do not treat a gap between item-level math and the total Amount as a defect
+or inconsistency; it is expected and not evidence of anything wrong.
+
 Rule-based flags for this invoice: {flags or "none"}
 - "high_value" means the amount exceeds $10,000 and warrants extra scrutiny.
 - "validation_failed" means at least one item failed inventory validation
@@ -87,7 +93,14 @@ Rule-based flags for this invoice: {flags or "none"}
   minor administrative gap.
 - "non_usd" means the currency is confirmed as something other than USD, so
   the $10,000 threshold may not directly apply - note this as needing
-  manual/FX review rather than guessing a conversion."""
+  manual/FX review rather than guessing a conversion.
+
+Write your reasoning in plain, everyday business language for a reader with
+no technical background - describe what a flag means in a sentence (e.g.
+"this invoice is billed in euros, not dollars") rather than naming it (e.g.
+never write "non_usd" or "high_value" verbatim). Keep it to 2-3 sentences
+covering only what actually matters for this invoice, not a checklist of
+every fact above."""
 
 
 def draft_decision(extracted: dict, validation: dict, flags: list[str]) -> dict:
@@ -115,6 +128,15 @@ facts above (not generic boilerplate).
 
 MAX_REFLECTIONS = 2
 
+# Flags that hold an otherwise-approved invoice for human review instead of
+# letting payment fire automatically. A "rejected" decision never needs this
+# gate - payment already doesn't happen for a rejection, so there's nothing
+# to hold. Deliberately excludes price-deviation and reflection-disagreement
+# signals: those are common enough for legitimate reasons (discounts, rush
+# fees, wording changes on confirmation) that gating on them would make
+# pending review too noisy to be useful.
+NEEDS_REVIEW_FLAGS = {"high_value", "unapproved_vendor", "validation_failed", "non_usd"}
+
 
 def run_approval(extracted: dict, validation: dict) -> dict:
     """Orchestrates rules + draft + a bounded reflection loop entirely in
@@ -137,8 +159,12 @@ def run_approval(extracted: dict, validation: dict) -> dict:
         if converged:
             break
 
+    decision = current["decision"]
+    if decision == "approved" and NEEDS_REVIEW_FLAGS & set(flags):
+        decision = "pending_review"
+
     return {
-        "decision": current["decision"],
+        "decision": decision,
         "reasoning": current["reasoning"],
         "reflection_count": reflection_count,
         "flags": flags,

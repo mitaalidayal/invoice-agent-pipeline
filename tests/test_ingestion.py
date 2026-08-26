@@ -83,9 +83,10 @@ def test_get_raw_text_extracts_from_pdf():
     assert "Summit Manufacturing" in text
 
 
-def _fake_completion(parsed_dict):
+def _fake_completion(parsed_dict, is_invoice=True):
     completion = MagicMock()
     message = MagicMock()
+    message.parsed.is_invoice = is_invoice
     message.parsed.model_dump.return_value = parsed_dict
     completion.choices = [MagicMock(message=message)]
     return completion
@@ -113,4 +114,19 @@ def test_extract_via_grok_raises_after_exhausting_retries(monkeypatch):
     with pytest.raises(Exception, match="failure 2"):
         extract_via_grok("some invoice text")
 
-    assert client.beta.chat.completions.parse.call_count == 2
+
+def test_extract_via_grok_raises_when_not_an_invoice(monkeypatch):
+    not_invoice = _fake_completion(
+        {"vendor": "", "amount": 0.0, "items": [], "due_date": None, "currency": "USD"},
+        is_invoice=False,
+    )
+    client = MagicMock()
+    client.beta.chat.completions.parse.return_value = not_invoice
+    monkeypatch.setattr("agents.ingestion.OpenAI", lambda **kwargs: client)
+
+    with pytest.raises(ValueError, match="does not appear to be an invoice"):
+        extract_via_grok("some resume text")
+
+    # A confident negative judgment isn't a transient failure - retrying
+    # wouldn't change it (temperature=0), so it should not be retried.
+    assert client.beta.chat.completions.parse.call_count == 1

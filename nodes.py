@@ -103,8 +103,21 @@ def reject_node(state: InvoiceState) -> dict:
     }
 
 
+def hold_for_review_node(state: InvoiceState) -> dict:
+    """Logs that this invoice was approved but held for human review before
+    payment, per the flags on the approval log entry; no payment call.
+    """
+    return {
+        "payment_result": None,
+        "log": _append_log(state, "hold_for_review", {"reasoning": state["approval_reasoning"]}),
+    }
+
+
 def route_after_approval(state: InvoiceState) -> str:
-    return "approved" if state["approval_decision"] == "approved" else "rejected"
+    decision = state["approval_decision"]
+    if decision in ("approved", "pending_review"):
+        return decision
+    return "rejected"
 
 
 def route_after_ingestion(state: InvoiceState) -> str:
