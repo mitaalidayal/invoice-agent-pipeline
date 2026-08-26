@@ -7,6 +7,8 @@ from pydantic import BaseModel
 
 load_dotenv()
 
+MODEL = os.environ.get("XAI_MODEL", "grok-4.6")
+
 
 class ApprovalDecision(BaseModel):
     decision: Literal["approved", "rejected"]
@@ -118,7 +120,7 @@ facts above (not generic boilerplate).
 """
 
     completion = _client().beta.chat.completions.parse(
-        model="grok-4.6",
+        model=MODEL,
         messages=[{"role": "user", "content": prompt}],
         response_format=ApprovalDecision,
         temperature=0,
@@ -192,7 +194,7 @@ decision and explain specifically what changed and why.
 """
 
     completion = _client().beta.chat.completions.parse(
-        model="grok-4.6",
+        model=MODEL,
         messages=[{"role": "user", "content": prompt}],
         response_format=ApprovalDecision,
         temperature=0,

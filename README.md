@@ -43,7 +43,10 @@ cp .env.example .env
 
 ```
 XAI_API_KEY=your_xai_api_key_here
+XAI_MODEL=grok-4.6
 ```
+
+`XAI_MODEL` is optional — it defaults to `grok-4.6` if unset, so you only need to set it to point at a different model.
 
 Seed the local inventory database (drops and recreates `inventory.db` every run, so it's always in sync with the current schema):
 

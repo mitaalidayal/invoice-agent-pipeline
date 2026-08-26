@@ -9,6 +9,8 @@ from pydantic import BaseModel
 
 load_dotenv()
 
+MODEL = os.environ.get("XAI_MODEL", "grok-4.6")
+
 
 class ExtractedItem(BaseModel):
     name: str
@@ -235,7 +237,7 @@ def _call_grok(prompt: str) -> ExtractedInvoice:
     for attempt in range(2):
         try:
             completion = client.beta.chat.completions.parse(
-                model="grok-4.6",
+                model=MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 response_format=ExtractedInvoice,
                 temperature=0,
