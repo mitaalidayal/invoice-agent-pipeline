@@ -35,7 +35,11 @@ cd galatiq-case-invoices
 uv sync
 ```
 
-Create a `.env` file in the repo root with your xAI API key:
+Copy `.env.example` to `.env` and fill in your xAI API key:
+
+```bash
+cp .env.example .env
+```
 
 ```
 XAI_API_KEY=your_xai_api_key_here
