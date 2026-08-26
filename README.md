@@ -30,7 +30,7 @@ Ingestion → Validation → Approval → Payment
 ## Setup
 
 ```bash
-git clone <this-repo-url>
+git clone https://github.com/mitaalidayal/invoice-agent-pipeline.git
 cd galatiq-case-invoices
 uv sync
 ```
